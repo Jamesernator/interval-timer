@@ -1,0 +1,92 @@
+<!doctype html>
+
+<style>
+  :root {
+    --background-color: #282a36;
+    --font-color: #8be9fd;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  interval-timer {
+    width: 100%;
+    height: 100%;
+    background-color: var(--background-color);
+    color: var(--font-color);
+    display: flex;
+    align-items: center;
+    place-content: center;
+    font-size: 5em;
+  }
+</style>
+
+<script type="module">
+  /**
+    * @returns {Promise<void>}
+    */
+  function frame() {
+    return new Promise(requestAnimationFrame)
+  }
+
+  /**
+    * @param {Element} element
+    * @param {string} eventName
+    * @returns {Promise<Event>}
+    */
+  function nextEvent(element, eventName) {
+    return new Promise(resolve => {
+      element.addEventListener(eventName, event => {
+        resolve(event)
+      }, { once: true })
+    })
+  }
+
+  class IntervalTimer extends HTMLElement {
+    constructor() {
+      super()
+      this.attachShadow({ mode: 'open' })
+    }
+
+    connectedCallback() {
+      this._interval = Number(this.getAttribute('interval')) * 1000
+      this._run()
+    }
+
+    async _run() {
+      while (true) {
+        const start = Date.now()
+        console.log([(Date.now() - start), this._interval])
+        while (Date.now() - start < this._interval) {
+          const timeRemaining = this._interval + start - Date.now()
+          const seconds = timeRemaining / 1000
+          const minutesFloor = Math.floor(seconds / 60).toString()
+          const secondsWithinMinute = Math.ceil(seconds % 60)
+          await frame()
+          this.shadowRoot.innerHTML = `
+            ${ String(minutesFloor).padStart(2, '0') }
+            :${ String(secondsWithinMinute).padStart(2, '0') }
+          `.replace(/\s/gu, '')
+        }
+        this.shadowRoot.innerHTML = '00:00'
+        await Promise.all([
+          nextEvent(document, 'pointerdown'),
+          nextEvent(document, 'pointerup'),
+        ])
+      }
+    }
+  }
+
+  customElements.define('interval-timer', IntervalTimer)
+
+  const intervalTimer = document.createElement('interval-timer')
+  /** @type {string} */
+  const interval = new URL(location.href).searchParams.get('interval') || String(5 * 60)
+  intervalTimer.setAttribute('interval', interval)
+  document.body.appendChild(intervalTimer)
+</script>
+
