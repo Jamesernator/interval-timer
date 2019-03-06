@@ -30,6 +30,8 @@
 </style>
 
 <script type="module">
+  import CancelSignalSource from "./CancelSignalSource.mjs"
+
   /**
     * @returns {Promise<void>}
     */
@@ -69,6 +71,42 @@
     }
   }
 
+  const audioContext = new AudioContext()
+  document.body.addEventListener('click', event => {
+    audioContext.resume()
+  }, { once: true })
+
+  function playTone({ frequency, duration, cancelSignal }) {
+    const oscillatorNode = new OscillatorNode(audioContext, {
+      frequency,
+    })
+
+    const gainNode = new GainNode(audioContext, {
+      gain: 1,
+    })
+
+    const done = new Promise(resolve => oscillatorNode.addEventListener('ended', resolve, { once: true }))
+
+    gainNode.connect(audioContext.destination)
+    gainNode.gain.linearRampToValueAtTime(0, audioContext.currentTime + duration)
+
+    oscillatorNode.connect(gainNode)
+    oscillatorNode.start()
+
+    oscillatorNode.stop(audioContext.currentTime + duration)
+    cancelSignal.subscribe(() => oscillatorNode.stop(0))
+    return done
+  }
+
+  async function playNoise(cancelSignal) {
+    while (!cancelSignal.signaled) {
+      await playTone({
+        cancelSignal,
+        frequency: Math.random() * 500,
+        duration: 0.5,
+      })
+    }
+  }
 
   class IntervalTimer extends HTMLElement {
     constructor() {
@@ -82,6 +120,8 @@
     }
 
     async _run() {
+      this.shadowRoot.innerHTML = `Click to start`
+      await nextEvent(document, 'pointerdown')
       while (true) {
         this.setAttribute('_delta', '')
         const start = Date.now()
@@ -95,10 +135,13 @@
           `.replace(/\s/gu, '')
         }
         this.shadowRoot.innerHTML = '00:00'
+        const nextTimer = new CancelSignalSource()
+        playNoise(nextTimer.signal)
         await Promise.all([
           nextEvent(document, 'pointerdown'),
           nextEvent(document, 'pointerup'),
         ])
+        nextTimer.cancel()
       }
     }
   }
