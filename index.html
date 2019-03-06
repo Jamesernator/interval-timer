@@ -23,6 +23,10 @@
     place-content: center;
     font-size: 5em;
   }
+
+  interval-timer::after {
+    content: attr('_delta');
+  }
 </style>
 
 <script type="module">
@@ -46,6 +50,26 @@
     })
   }
 
+  /**
+   * @param {number} secs
+   */
+  function secondsToTime(secs) {
+    const hours = Math.floor(secs / (60 * 60))
+
+    const divisorForMinutes = secs % (60 * 60)
+    const minutes = Math.floor(divisorForMinutes / 60)
+
+    const divisorForSeconds = divisorForMinutes % 60
+    const seconds = Math.ceil(divisorForSeconds)
+
+    return {
+      hours,
+      minutes: seconds === 60 ? minutes + 1 : minutes,
+      seconds: seconds === 60 ? 0 : seconds,
+    }
+  }
+
+
   class IntervalTimer extends HTMLElement {
     constructor() {
       super()
@@ -59,17 +83,15 @@
 
     async _run() {
       while (true) {
+        this.setAttribute('_delta', '')
         const start = Date.now()
-        console.log([(Date.now() - start), this._interval])
-        while (Date.now() - start < this._interval) {
+        while (Date.now() - start <= this._interval) {
           const timeRemaining = this._interval + start - Date.now()
-          const seconds = timeRemaining / 1000
-          const minutesFloor = Math.floor(seconds / 60).toString()
-          const secondsWithinMinute = Math.ceil(seconds % 60)
-          await frame()
+          const { minutes, seconds } = secondsToTime(timeRemaining / 1000)
+          await new Promise(requestAnimationFrame)
           this.shadowRoot.innerHTML = `
-            ${ String(minutesFloor).padStart(2, '0') }
-            :${ String(secondsWithinMinute).padStart(2, '0') }
+            ${ String(minutes).padStart(2, '0') }
+            :${ String(seconds).padStart(2, '0') }
           `.replace(/\s/gu, '')
         }
         this.shadowRoot.innerHTML = '00:00'
