@@ -1,7 +1,17 @@
 
-
+/**
+ * @typedef { { signaled: boolean, subscribe: () => void } } CancelSignal
+ */
 
 export default class CancelSignalSource {
+    /**
+     * @type {CancelSignal}
+     */
+    _signal
+
+    /**
+     * @param {Iterable<CancelSignal>} linkedSignals
+     */
     constructor(linkedSignals=[]) {
         // eslint-disable-next-line no-param-reassign
         linkedSignals = [...linkedSignals]
@@ -65,6 +75,9 @@ export default class CancelSignalSource {
         return this._signal
     }
 
+    /**
+     * @returns {Promise<void>}
+     */
     cancel() {
         if (this._state === 'closed' || this._state === 'signaled') {
             return Promise.resolve()

@@ -76,6 +76,13 @@
     audioContext.resume()
   }, { once: true })
 
+  /**
+   * @param {object} options
+   * @param {number} [options.frequency]
+   * @param {number} [options.duration]
+   * @param {import("./CancelSignalSource.mjs").CancelSignal} [options.cancelSignal]
+   * @returns {Promise<void>}
+   */
   function playTone({ frequency, duration, cancelSignal }) {
     const oscillatorNode = new OscillatorNode(audioContext, {
       frequency,
@@ -98,6 +105,9 @@
     return done
   }
 
+  /**
+   * @param {import("./CancelSignalSource.mjs").CancelSignal} cancelSignal
+   */
   async function playNoise(cancelSignal) {
     while (!cancelSignal.signaled) {
       await playTone({
